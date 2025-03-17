@@ -1,0 +1,15 @@
+[package]
+name = "rust-reverse-proxy"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = { version = "1.0.97", features = ["backtrace"] }
+atomic-counter = "1.0.1"
+byteorder = "1.5.0"
+bytes = "1.10.1"
+clap = { version = "4.5.32", features = ["derive"] }
+futures = "0.3.31"
+quinn = "0.11.6"
+rcgen = "0.13.2"
+tokio = { version = "1.44.1", features = ["macros", "rt-multi-thread"] }

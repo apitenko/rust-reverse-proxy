@@ -1,0 +1,74 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "cppvsdbg",
+            "request": "launch",
+            "name": "Debug executable MSVC connect",
+            "program": "${workspaceRoot}/target/debug/rust-reverse-proxy.exe",
+            "symbolSearchPath": "${workspaceRoot}/target/debug",
+            "console": "integratedTerminal",
+            "args": ["connect", "-r", "3000", "-a", "127.0.0.1", "-p", "3002"],
+            "cwd": "${workspaceFolder}",
+            // "environment": [{
+            //     "name": "RUST_BACKTRACE",
+            //     "value": "1"
+            // }]
+        },
+        {
+            "type": "cppvsdbg",
+            "request": "launch",
+            "name": "Debug executable MSVC proxy",
+            "program": "${workspaceRoot}/target/debug/rust-reverse-proxy.exe",
+            "symbolSearchPath": "${workspaceRoot}/target/debug",
+            "console": "integratedTerminal",
+            "args": ["proxy", "-c", "3001", "-s", "3002"],
+            "cwd": "${workspaceFolder}",
+            // "environment": [{
+            //     "name": "RUST_BACKTRACE",
+            //     "value": "1"
+            // }]
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'rust-reverse-proxy'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=rust-reverse-proxy",
+                    "--package=rust-reverse-proxy"
+                ],
+                "filter": {
+                    "name": "rust-reverse-proxy",
+                    "kind": "bin"
+                }
+            },
+            // "args": ["proxy", "-c", "3000", "-s", "3002"],
+            "args": ["connect", "-r", "3000", "-a", "localhost", "-p", "3002"],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'rust-reverse-proxy'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=rust-reverse-proxy",
+                    "--package=rust-reverse-proxy"
+                ],
+                "filter": {
+                    "name": "rust-reverse-proxy",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}
