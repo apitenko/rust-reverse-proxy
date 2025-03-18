@@ -1,10 +1,12 @@
 #![feature(addr_parse_ascii)]
+#![feature(try_blocks)]
 
-use std::error::Error;
+use std::{error::Error, time::Duration};
 
 use clap::{Args, Parser, Subcommand};
 use client::run_connect;
 use server::run_proxy;
+use tokio::time::sleep;
 
 pub mod client;
 pub mod id_gen;
@@ -55,11 +57,17 @@ pub struct ConnectArgs {
 async fn main() -> anyhow::Result<(), Box<dyn Error + Send + Sync + 'static>> {
     let cli = Cli::parse();
 
-    match cli.command {
-        Commands::Proxy(args) => run_proxy(args).await,
-        Commands::Connect(args) => run_connect(args).await,
-    }
-    .unwrap();
+    loop {
+        let result = match &cli.command {
+            Commands::Proxy(args) => run_proxy(args).await,
+            Commands::Connect(args) => run_connect(args).await,
+        };
 
+        match result {
+            Err(e) => println!("Fatal error: {e}"),
+            Ok(_) => (),
+        }
+        sleep(Duration::from_secs(1)).await;
+    }
     Ok(())
 }

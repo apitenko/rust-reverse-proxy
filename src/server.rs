@@ -10,7 +10,7 @@ use crate::{
 use byteorder::{ByteOrder, LittleEndian};
 use bytes::Bytes;
 use futures::lock::Mutex;
-use quinn::Connection;
+use quinn::{Connection, Incoming, VarInt};
 use std::error::Error;
 use tokio::net::UdpSocket;
 
@@ -45,7 +45,7 @@ impl MapsServer {
 }
 
 pub async fn run_proxy(
-    args: ProxyArgs,
+    args: &ProxyArgs,
 ) -> anyhow::Result<(), Box<dyn Error + Send + Sync + 'static>> {
     println!(
         " >>> starting UDP proxy on | clients ::{} | server ::{}",
@@ -56,12 +56,18 @@ pub async fn run_proxy(
     let udp_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), args.port_client.parse()?);
 
     let maps: Arc<Mutex<MapsServer>> = Arc::new(Mutex::new(MapsServer::new()));
+    let (server_endpoint, _server_cert) = make_server_endpoint(quic_addr).unwrap();
 
     loop {
-        let (endpoint, _server_cert) = make_server_endpoint(quic_addr).unwrap();
         // accept a single connection
-        let incoming_conn = endpoint.accept().await.unwrap();
-        let quic_connection = incoming_conn.await.unwrap();
+        let quic_connection = loop {
+            println!("[server] waiting connection...");
+            let _: anyhow::Result<()> = try {
+                let incoming_conn = server_endpoint.accept().await.unwrap();
+                let quic_connection = incoming_conn.await?;
+                break quic_connection;
+            };
+        };
         println!(
             "[server] proxy connection accepted: addr={}",
             quic_connection.remote_address()
@@ -78,6 +84,8 @@ pub async fn run_proxy(
             Err(e) => format!("Error: {}", e),
         };
         println!("Connection closed, restarting. Reason: {}", reason);
+        // server_endpoint.close(VarInt::from_u32(0), &[0]);
+        // server_endpoint.
     }
 
     Ok(())
@@ -100,8 +108,12 @@ pub async fn udp_server(
         LittleEndian::write_u16(&mut buf[0..2], id);
         let bytes = Bytes::copy_from_slice(&buf[0..len + 2]);
         quic_conn.send_datagram(bytes)?;
-        
-        println!("[server] UDP packet received: id={:?} data={:?}", id, &buf[2..len+2]);
+
+        println!(
+            "[server] UDP packet received: id={:?} data={:?}",
+            id,
+            &buf[2..len + 2]
+        );
     }
 }
 
@@ -122,6 +134,10 @@ pub async fn quic_server(
         if let Some(addr) = addr {
             udp_socket.send_to(&datagram[2..], addr).await?;
         }
-        println!("[server] QUIC datagram received: id={:?} data={:?}", id, &datagram[2..]);
+        println!(
+            "[server] QUIC datagram received: id={:?} data={:?}",
+            id,
+            &datagram[2..]
+        );
     }
 }

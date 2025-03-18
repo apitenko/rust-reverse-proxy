@@ -3,13 +3,14 @@ use std::{
     error::Error,
     net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs},
     sync::Arc,
+    time::Duration,
 };
 
 use byteorder::{ByteOrder, LittleEndian};
 use bytes::Bytes;
 use futures::lock::Mutex;
 use quinn::{ClientConfig, Connection, Endpoint, crypto::rustls::QuicClientConfig, rustls};
-use tokio::net::UdpSocket;
+use tokio::{net::UdpSocket, time::sleep};
 
 use crate::{ConnectArgs, quinn_example_code::SkipServerVerification};
 
@@ -33,7 +34,7 @@ impl MapsClient {
 }
 
 pub async fn run_connect(
-    args: ConnectArgs,
+    args: &ConnectArgs,
 ) -> anyhow::Result<(), Box<dyn Error + Send + Sync + 'static>> {
     println!(
         " >>> connecting to UDP proxy on {}:{} forwarding to localhost:{}",
@@ -59,11 +60,13 @@ pub async fn run_connect(
     )));
 
     // connect to server
-    let quic_connection = client_endpoint
-        .connect(remote_addr, "proxy")
-        .unwrap()
-        .await
-        .unwrap();
+    let quic_connection = loop {
+        println!("[client] waiting connection...");
+        let _: anyhow::Result<()> = try {
+            let quic_connection = client_endpoint.connect(remote_addr, "proxy")?.await?;
+            break quic_connection;
+        };
+    };
     println!(
         "[client] connected: addr={}",
         quic_connection.remote_address()
@@ -121,12 +124,13 @@ pub async fn quic_client(
 pub async fn run_socket_client(
     id: u16,
     quic_conn: Connection,
-    socket: Arc<UdpSocket>,
+    udp_socket: Arc<UdpSocket>,
 ) -> anyhow::Result<(), Box<dyn Error + Send + Sync + 'static>> {
+
     let mut buf = [0u8; 65535];
     LittleEndian::write_u16(&mut buf[0..2], id);
     loop {
-        let len = socket.recv(&mut buf[2..]).await?;
+        let len = udp_socket.recv(&mut buf[2..]).await?;
         quic_conn.send_datagram(Bytes::copy_from_slice(&buf[..len + 2]))?;
         println!(
             "[client] UDP packet received: id={:?} data={:?}",
