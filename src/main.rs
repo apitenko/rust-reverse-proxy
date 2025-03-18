@@ -63,10 +63,12 @@ async fn main() -> anyhow::Result<(), Box<dyn Error + Send + Sync + 'static>> {
             Commands::Connect(args) => run_connect(args).await,
         };
 
-        match result {
-            Err(e) => println!("Fatal error: {e}"),
-            Ok(_) => (),
-        }
+        result.unwrap();
+
+        // match result {
+        //     Err(e) => println!("Fatal error: {e}"),
+        //     Ok(_) => (),
+        // }
         sleep(Duration::from_secs(1)).await;
     }
     Ok(())
